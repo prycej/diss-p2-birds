@@ -1,0 +1,50 @@
+model {
+  # Priors
+  for (t in 1:(n_occasions-1)){
+    phi[t] ~ dbeta(alpha_phi, beta_phi) # Prior for survival
+    p[t] ~  dbeta(alpha_p, beta_p) # Prior for recapture
+  }
+
+  # Multinomial likelihood
+  for (t in 1:(n_occasions-1)){
+    marr[t,] ~ dmulti(prob_release[t,], R[t])
+  }
+  # Define the cell probabilities of the m-arrays
+  # Main diagonal
+  for (t in 1:(n_occasions-1)){
+    q[t] <- 1-p[t] # Probability of non-recapture
+    prob_release[t,t] <- phi[t]*p[t]
+    # Above main diagonal
+    for (j in (t+1):(n_occasions-1)){
+      prob_release[t,j] <- prod(phi[t:j])*prod(q[t:(j-1)])*p[j]
+    }
+    # Below main diagonal
+    for (j in 1:(t-1)){
+      prob_release[t,j] <- 0
+    }
+  }
+  # Last column: probability of non-recapture
+  for (t in 1:(n_occasions-1)){
+    prob_release[t,n_occasions] <- 1-sum(prob_release[t,1:(n_occasions-1)])
+  }
+  # Compute difference between observed and expected data
+  for (t in 1:(n_occasions-1)){
+    for (j in 1:n_occasions){
+
+      marr_expected[t,j] <- R[t]*prob_release[t,j]
+      diff_observed_ind[t,j] <- pow((pow(marr[t,j], 0.5)-pow(marr_expected[t,j], 0.5)), 2)
+    }
+  }
+  # Compute difference between replicated and expected data
+  for (t in 1:(n_occasions-1)){
+    marr_new[t,1:n_occasions] ~ dmulti(prob_release[t,], R[t])
+
+    for (j in 1:n_occasions){
+      diff_replicate_ind[t,j] <- pow((pow(marr_new[t,j], 0.5)-pow(marr_expected[t,j], 0.5)), 2)
+   }
+  }
+    # desrepancy measures
+    disc_obs <- sum(diff_observed_ind[,])
+    disc_rep <- sum(diff_replicate_ind[,])
+}
+

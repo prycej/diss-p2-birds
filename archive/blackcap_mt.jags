@@ -1,0 +1,19 @@
+model {
+# Priors
+omega ~ dbeta(1,1)
+for (i in 1:T){
+    p[i] ~ dbeta(1,1)
+}
+# Likelihood
+for (i in 1:M){
+    z[i] ~ dbern(omega) # Inclusionindicators
+    for (j in 1:T){
+    yaug[i,j] ~ dbern(p.eff[i,j])
+    p.eff[i,j] <- z[i] * p[j] #Can only be detected if z=1
+} #j
+} #i
+# Derived quantities
+N <-sum(z)
+}
+
+

@@ -1,0 +1,29 @@
+model{
+  # Multinomial likelihood
+  for (t in 1:(n.occasions-1)){  # rows of the m-array/p-array
+    marr[t, ] ~ dmulti(parr[t, ], R[t])
+  }
+
+  # Priors
+  # Using vectors for phi and p simplies creating the p-array
+  for(t in 1:(n.occasions - 1)) {
+    phi[t] ~ dbeta(alpha_phi, beta_phi)         # Prior for survival
+    p[t] ~ dbeta(alpha_p, beta_p)         # Prior for recapture
+    }
+
+  # Create the p-array, the cell probabilities of the m-array:
+  for (t in 1:(n.occasions-1)){
+    # Main diagonal
+    parr[t,t] <- phi[t] * p[t]
+    # Above main diagonal
+    for (j in (t+1):(n.occasions-1)){
+      parr[t,j] <- prod(phi[t:j]) * prod(1 - p[t:(j-1)]) * p[j]
+    }
+    # Below main diagonal
+    for (j in 1:(t-1)){
+      parr[t,j] <- 0
+    }
+    # Last column: probability never recaptured
+    parr[t,n.occasions] <- 1 - sum(parr[t,1:(n.occasions-1)])
+  }
+}

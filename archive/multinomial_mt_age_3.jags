@@ -1,0 +1,41 @@
+model {
+  # Priors and constraints
+  for (t in 1:(n.occasions-1)){
+    phi.juv[t] ~ dunif(0, 1)
+    phi.ad[t] ~ dunif(0, 1)
+    phi.u[t] ~ dunif(0, 1)
+    p[t] ~ dunif(0, 1)
+  }
+  # Define the multinomial likelihood
+  for (t in 1:(n.occasions-1)){
+    marr.j[t,1:n.occasions] ~ dmulti(pr.j[t,], R.juv[t])
+    marr.a[t,1:n.occasions] ~ dmulti(pr.a[t,], R.ad[t])
+    marr.u[t,1:n.occasions] ~ dmulti(pr.u[t,], R.u[t])
+  }
+  # Define the cell probabilities of the m-arrays
+  # Main diagonal
+  for (t in 1:(n.occasions-1)){
+    q[t] <- 1-p[t] # Probability of non-recapture
+    pr.j[t,t] <- phi.juv[t]*p[t]
+    pr.a[t,t] <- phi.ad[t]*p[t]
+    pr.u[t,t] <- phi.u[t]*p[t]
+    # Above main diagonal
+    for (j in (t+1):(n.occasions-1)){
+      pr.j[t,j] <- phi.juv[t]*prod(phi.ad[(t+1):j])*prod(q[t:(j-1)])*p[j]
+      pr.a[t,j] <- prod(phi.ad[t:j])*prod(q[t:(j-1)])*p[j]
+      pr.u[t,j] <- phi.u[t]*prod(phi.ad[(t+1):j])*prod(q[t:(j-1)])*p[j]
+    } 
+    # Below main diagonal
+    for (j in 1:(t-1)){
+      pr.j[t,j] <- 0
+      pr.a[t,j] <- 0
+      pr.u[t,j] <- 0
+    }
+  }
+  # Last column: probability of non-recapture
+  for (t in 1:(n.occasions-1)){
+    pr.j[t,n.occasions] <- 1-sum(pr.j[t,1:(n.occasions-1)])
+    pr.a[t,n.occasions] <- 1-sum(pr.a[t,1:(n.occasions-1)])
+    pr.u[t,n.occasions] <- 1-sum(pr.u[t,1:(n.occasions-1)])
+  }
+}

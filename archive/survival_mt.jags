@@ -1,0 +1,25 @@
+model{
+  # Likelihood
+  for (i in 1:nInd){
+    # Define latent state, z=1 alive, z=0 dead
+    # For the occasion of first capture, ensure z = 1
+    z[i,f1[i]] ~ dbern(1)
+    # For the remaining occasions
+    for (t in (f1[i]+1):n.occasions){
+      # Biological process
+      z[i,t] ~ dbern(phi[t-1] * z[i,t-1])
+      # Observation process
+      y[i,t] ~ dbern(p[t-1] * z[i,t])
+    }
+  }
+
+  # Priors
+  for(t in 1:(n.occasions - 1)) {
+    phi[t] ~ dbeta(1, 1)         # Prior for survival
+    }
+  for(t in 1:(n.occasions - 1)) {
+    p[t] ~ dbeta(1, 1)         # Prior for recapture
+  }
+  #p[n.occasions - 1] <- p[n.occasions - 2]
+
+}

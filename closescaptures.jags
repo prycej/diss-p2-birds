@@ -1,0 +1,18 @@
+model{
+  # Likelihood
+  for(i in 1:M) {
+     # Ecological model
+     w[i] ~ dbern(omega)  # w=1 if present
+     # Observation model
+     y[i] ~ dbin(p * w[i], n) 
+  }
+
+  # Priors
+  for (t in 1:n-occasions)
+  p ~ dbeta(1, 1) # Uninformative prior
+  omega ~ dbeta(1.6, 3.4)
+  
+
+  # Derived values
+  N <- sum(w)
+}

@@ -1,0 +1,32 @@
+model{
+  # Likelihood
+  for (i in 1:nInd){
+    # Define latent state, z=1 alive, z=0 dead
+    # For the occasion of first capture, ensure z = 1
+    z[i,f1[i]] ~ dbern(1)
+    # For the remaining occasions
+    for (t in (f1[i]+1):n.occasions){
+      # Biological process
+      z[i,t] ~ dbern(phi[i, t-1] * z[i,t-1])
+      # Observation process
+      y[i,t] ~ dbern(p[i, t-1] * z[i,t])
+    }
+  }
+
+for (i in 1:nInd){
+  for (t in f1[i]:(n.occasions-1)){
+    logit(phi[i,t]) <- beta[group[i]] + gamma[t]
+    p[i,t] ~ dbeta(1,1)
+  } #t
+} #i
+# for survival parameters
+for (t in 1:(n.occasions-1)){
+  gamma[t] ~ dnorm(0, 0.01)I(-10, 10) # Priors for time effects
+  phi.g1[t] <- 1 / (1+exp(-gamma[t])) # Back-transformed survival of young
+  phi.g2[t] <- 1 / (1+exp(-gamma[t]-beta[2])) # Back-transformed survival of old
+  phi.g3[t] <- 1 / (1+exp(-gamma[t]-beta[3])) # Back-transformed survival of unkown
+}
+  beta[1] <- 0 # Corner constraint
+  beta[2] ~ dnorm(0, 0.01)I(-10, 10) # Prior for additional effect of old
+  beta[3] ~ dnorm(0, 0.01)I(-10, 10) # Prior for additional effect of unkown
+}

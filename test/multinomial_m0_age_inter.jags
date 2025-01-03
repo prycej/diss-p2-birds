@@ -1,0 +1,74 @@
+model {
+  # Priors
+  for (t in 1:(n_occasions-1)){
+    phi_juv[t] <- phi_juv0
+    phi_adult[t] <- phi_adult0
+    p[t] <- p0
+    phi_diff[t] <- phi_adult[t] - phi_juv[t] # calculated difference in survival probabilites
+  }
+  phi_juv0 ~ dbeta(alpha_phi_juv, beta_phi_juv)   # Prior for mean juvenile survival
+  phi_adult0 ~ dbeta(alpha_phi_adult, beta_phi_adult)  # Prior for mean adult survival
+  p0 ~ dbeta(alpha_p, beta_p)  # Prior for recapture
+
+  # Multinomial likelihood
+  for (t in 1:(n_occasions-1)){
+    marr_juv[t,] ~ dmulti(prob_release_juv[t,], releases_juv[t])
+    marr_adult[t,] ~ dmulti(prob_release_adult[t,], releases_adult[t])
+  }
+  # Define the cell probabilities of the m-arrays
+  # Main diagonal
+  for (t in 1:(n_occasions-1)){
+    q[t] <- 1-p[t] # Probability of non-recapture
+    prob_release_juv[t,t] <- phi_juv[t]*p[t]
+    prob_release_adult[t,t] <- phi_adult[t]*p[t]
+    # Above main diagonal
+    for (j in (t+1):(n_occasions-1)){
+      prob_release_juv[t,j] <- phi_juv[t]*prod(phi_adult[(t+1):j])*prod(q[t:
+                                                             (j-1)])*p[j]
+      prob_release_adult[t,j] <- prod(phi_adult[t:j])*prod(q[t:(j-1)])*p[j]
+    }
+    # Below main diagonal
+    for (j in 1:(t-1)){
+      prob_release_juv[t,j] <- 0
+      prob_release_adult[t,j] <- 0
+    }
+  }
+
+  # Last column: probability of non-recapture
+  for (t in 1:(n_occasions-1)){
+    prob_release_juv[t,n_occasions] <- 1-sum(prob_release_juv[t,1:(n_occasions-1)])
+    prob_release_adult[t,n_occasions] <- 1-sum(prob_release_adult[t,1:(n_occasions-1)])
+  }
+
+  # Compute difference between observed and expected data
+  for (t in 1:(n_occasions-1)){
+    for (j in 1:n_occasions){
+      marr_expected_juv[t,j] <- releases_juv[t]*prob_release_juv[t,j]
+      diff_observed_ind_juv[t,j] <- pow((pow(marr_juv[t,j], 0.5)-pow(marr_expected_juv[t,j], 0.5)), 2)
+
+      marr_expected_adult[t,j] <- releases_adult[t]*prob_release_adult[t,j]
+      diff_observed_ind_adult[t,j] <- pow((pow(marr_adult[t,j], 0.5)-pow(marr_expected_adult[t,j], 0.5)), 2)
+    }
+  }
+  # Compute difference between replicated and expected data
+  for (t in 1:(n_occasions-1)){
+    marr_replicate_juv[t,1:n_occasions] ~ dmulti(prob_release_juv[t,], releases_juv[t])
+    marr_replicate_adult[t,1:n_occasions] ~ dmulti(prob_release_adult[t,], releases_adult[t])
+
+    for (j in 1:n_occasions){
+      diff_replicate_ind_juv[t,j] <- pow((pow(marr_replicate_juv[t,j], 0.5)-pow(marr_expected_juv[t,j], 0.5)), 2)
+      diff_replicate_ind_adult[t,j] <- pow((pow(marr_replicate_adult[t,j], 0.5)-pow(marr_expected_adult[t,j], 0.5)), 2)
+   }
+  }
+  # desrepancy measures
+  disc_obs_juv <- sum(diff_observed_ind_juv[,])
+  disc_rep_juv <- sum(diff_replicate_ind_juv[,])
+
+  disc_obs_adult <- sum(diff_observed_ind_adult[,])
+  disc_rep_adult <- sum(diff_replicate_ind_adult[,])
+
+  # in order to get one result back in JAGS
+  mean_phi_diff <- mean(phi_diff)
+}
+
+
